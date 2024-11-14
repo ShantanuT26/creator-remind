@@ -5,6 +5,11 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import TaskContext from './TaskContext';
 import ThemeContext from './ThemeContext';
+import {initializeApp} from 'firebase/app';
+import {collection, getDocs, getFirestore} from 'firebase/firestore';
+
+
+
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -16,6 +21,25 @@ root.render(
     </ThemeContext>
   </React.StrictMode>
 );
+
+// initializeApp(firebaseConfig);
+
+// const db = getFirestore();
+
+// const colRef = collection(db, "Books");
+
+// getDocs(colRef).then(
+//   (snapshot)=>{
+//     const books = [];
+//     snapshot.docs.forEach((doc)=>
+//     {
+//       books.push({...doc.data()})
+//     })
+//     console.log(books); 
+//   }
+// )
+
+
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
