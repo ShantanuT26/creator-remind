@@ -1,23 +1,28 @@
 import logo from './logo.svg';
-import {Button, TextField,Box,Grid2, RadioGroup, Radio, FormControlLabel, AppBar, createTheme, ThemeProvider, CssBaseline, FormLabel} from '@mui/material';
+import {Button, TextField,Box,Grid2, RadioGroup, Radio, FormControlLabel, FormControl, AppBar, createTheme, ThemeProvider, CssBaseline, FormLabel} from '@mui/material';
 import {BrowserRouter as Router, Route, Routes, useNavigate} from 'react-router-dom';
 import BackButton from './BackButton';
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect,useRef } from 'react';
 import './App.css';
 import ThemeButton from './ThemeButton';
 import { TaskCntxt } from './TaskContext';
 import { ThemeCntxt } from './ThemeContext';
 import { dark } from '@mui/material/styles/createPalette';
 import { grey } from '@mui/material/colors';
-import {db, colRef, auth} from './firebaseConfig';
-import { addDoc, query, getDocs } from 'firebase/firestore';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import {db, userColRef, auth} from './firebaseConfig';
+import { addDoc, query, getDocs, setDoc, doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged} from 'firebase/auth';
+import validator from "validator";
 
 export const ThemeContext = React.createContext();
 
 
 export default function App() 
 {
+  const [signUpPassword, setSignUpPassword] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [signUpEmail, setSignUpEmail] = useState("");
+  const [loginEmail, setLoginEmail] = useState("");
   const HomePage = () =>
   {
     
@@ -60,6 +65,20 @@ export default function App()
       const {taskList, addTask} = useContext(TaskCntxt);
       const[taskName, setTaskName]  = useState("");
       const [taskType, setTaskType] = useState("");
+      let userDocRef;
+      useEffect(()=>
+      {
+        const unsubscribe = auth.onAuthStateChanged((user)=>
+        {
+          userDocRef = doc(db, "users", user.uid);
+        })
+
+        return()=>
+        {
+          unsubscribe();
+        }
+       
+      })
       const handleSubmit = (event) =>
       {
         event.preventDefault();
@@ -67,7 +86,8 @@ export default function App()
         console.log("TaskTypeSubmit: " + taskType);
         console.log("TaskNameSubmit: " + taskName);
         
-        const newTask = {
+        const newTask = 
+        {
           tType: taskType,
           tName: taskName
         };
@@ -76,14 +96,14 @@ export default function App()
           have just hit submit, and the values are set in stone. We add those values
           into a new document in the colRef (which is just the books collection) and give it
           2 fields; title and author*/
-        addDoc(colRef, {
-          title: taskType,
-          author: taskName,
-        })
 
-        addTask(newTask);
+        // addDoc(colRef, {
+        //   title: taskType,
+        //   author: taskName,
+        // })
+        //addTask(newTask);
+        updateDoc(userDocRef, { tasks: arrayUnion(newTask)});
         console.log("newtask: ",  newTask);
-
         navigate('/home');
       };
 
@@ -134,45 +154,88 @@ export default function App()
     }
     const ViewMyTasks = ()=>
     {
-      const {taskList, addTask} = useContext(TaskCntxt);
-      console.log("VIEWTASKS TASKLIST: ", taskList); 
+      //UNCOMMENT const {taskList, addTask} = useContext(TaskCntxt);
+      //UNCOMMENT console.log("VIEWTASKS TASKLIST: ", taskList); 
       const {lightMode, darkMode, darkTheme, setDarkTheme} = useContext(ThemeCntxt);
       const overallTheme = darkTheme ? darkMode : lightMode; 
-      const [books, setBooks] = useState([]);
+      const [taskBubbles, setTaskBubbles] = useState([]);
+      let currUserDoc;
+      let tempData;
+      // const [books, setBooks] = useState([]);
 
       /* below this comment I am setting an array called books, to contain
       a bunch of task objects. I am doing this in a useeffect since getDocs is asynchronous,
       so when I try to print the array, it is empty. This auto updates*/
-      useEffect(()=>{
-        getDocs(colRef).then(
-          (snapshot)=>{
-            const tempBooks = []
-            snapshot.docs.forEach((doc)=>
-            {
-              tempBooks.push({...doc.data()})
-              setBooks(tempBooks);
-            })
-          }
-        )
-      })
+      // useEffect(()=>{
+      //   getDocs(colRef).then(
+      //     (snapshot)=>{
+      //       const tempBooks = []
+      //       snapshot.docs.forEach((doc)=>
+      //       {
+      //         tempBooks.push({...doc.data()})
+      //         setBooks(tempBooks);
+      //       })
+      //     }
+      //   )
+      // })
       
-      console.log("BOOKS: ", books);
+      useEffect(()=>
+      {
+        const checkDocSnap = async(currUserDoc) =>
+        {
+          const docSnap = await getDoc(currUserDoc);
+          if(docSnap.exists)
+          {
+            console.log("user doc exists");
+            //setTaskBubbles(docSnap.tasks);
+            tempData = docSnap.data();
+            setTaskBubbles(tempData.tasks || []);
+          }
+          else{
+            console.log("user doc DNE");
+          }
+        }
+        const unsubscribe = auth.onAuthStateChanged((user)=>
+        {
+          if(user)  
+          {
+            console.log("Current User ID: ", user.uid);
+            currUserDoc = doc(db, "users", user.uid);
+            checkDocSnap(currUserDoc);
+          }
+          else{
+            console.log("No user is signed in");
+          }
+        })
+
+        return() =>
+        {
+          unsubscribe();
+        };
+      }, [])
+     
+      
+      
       return(
         <ThemeProvider theme = {overallTheme}>
           <CssBaseline/> 
         <div>
-          
-          {books.map((book, index)=>
-          (
-            <li key = {index}>
+        
+        {taskBubbles.length>0 ? (
+        taskBubbles.map((task, index)=>
+        (
+          <li key = {index}>
               <Button sx = {{backgroundColor: 'blue'}}>
-                <h4>{book.title}</h4>
+                <h4>{task.tType}</h4>
                 <br/>
-                <h4>{book.author}</h4>
+                <h4>{task.tName}</h4>
               </Button>
             </li>
-          ))
-          }
+        ))) : (
+          <p>No tasks availabke</p>
+        )
+        }
+          
         </div>
         </ThemeProvider>
       )
@@ -181,38 +244,117 @@ export default function App()
     const SignUpPage = () =>
     {
       const navigate = useNavigate();
-      const [password, setPassword] = useState("");
-      const [email, setEmail] = useState("");
+      const emailRef = useRef("");
+      const passwordRef = useRef("");
       const goToHome = () =>
       {
         navigate('/home');
       }
-      const registerUser = () =>
+      const logIn = () =>
       {
-        createUserWithEmailAndPassword(auth, email, password);
+        navigate('/login');
       }
-      const handleEmailChange = (event) =>
+      const registerUser = (event) =>
       {
-        setEmail(event.target.value);
-      }
-      const handlePasswordChange = (event) =>
-      {
-        setPassword(event.target.value);
+        event.preventDefault();
+        createUserWithEmailAndPassword(auth, emailRef.current, passwordRef.current).then
+        (
+          (cred)=>
+          {
+            console.log(cred.user);
+          }
+        ) .catch((error)=>
+          {
+            console.log(error.message);
+          }
+        );
       }
       return(
         <div>
-        <Button onClick = {goToHome}>Home</Button>
-        <form onSubmit = {registerUser}>
-          <FormLabel label = "email" onChange={handleEmailChange}/>
-          <input type='email'></input>
-          <FormLabel label = "password" onChange = {handlePasswordChange}/>
-          <input type='password'></input>
-          <button type='submit'></button>
+        <Grid2 container direction="column">
+
+        <Grid2>
+        {/* <Button onClick = {goToHome}>Home</Button> */}
+        <Button onClick = {logIn}>Already Have An Account? Log In</Button>
+        </Grid2>
+
+        <Grid2 margin = "auto" marginTop = {20} >
+        <form onSubmit={registerUser}>
+          <label> Email </label>
+          <input type='email' 
+          defaultValue = {signUpEmail} 
+          onChange = {(event)=> emailRef.current = event.target.value} 
+          style={{marginBottom: '16px'}}></input>
+
+          <label> Password </label>
+          <input type='password' defaultValue = {signUpPassword} onChange = {(event)=> passwordRef.current = event.target.value}
+           style={{marginBottom: '16px'}}></input>
+          <Button onClick = {registerUser}>Register</Button>
         </form>
+        </Grid2>
+        </Grid2>
         </div>
       )
     }
   
+    const LoginPage = () =>
+    {
+      const emailRef = useRef("");
+      const passwordRef = useRef("");
+      const navigate = useNavigate();
+
+      const logUserIn = (event) =>
+      {
+        event.preventDefault();
+        console.log("loginemail: " + emailRef.current)
+        console.log("loginpassword: " + passwordRef.current)
+        signInWithEmailAndPassword(auth, emailRef.current, passwordRef.current).then(()=> 
+        {
+          const userDocRef = doc(db, "users", auth.currentUser.uid);
+          setDoc(userDocRef, { name: "John Doe", email: auth.currentUser.email});
+          navigate('/home')
+        }
+        ).catch(
+          (err)=>{
+            console.log(err.message);
+          }
+        )
+      }
+
+      useEffect(()=>
+      {
+        if(auth.currentUser)
+        {
+          console.log("Current User ID: ", auth.currentUser.uid);
+        }
+        else{
+          console.log("No user is signed in");
+        }
+      })
+      return(
+        <div>
+          <Grid2 container direction="column">
+          <Grid2 margin = "auto" marginTop = {20} >
+          <form onSubmit = {logUserIn}>
+            <label > Email </label>
+            <input type='email' defaultValue = {loginEmail} 
+            onChange={(event)=>
+            {
+                emailRef.current = event.target.value;
+            } 
+            } 
+            style={{marginBottom: '16px'}}/>
+            <label> Password </label>
+            <input type='password' defaultValue = {loginPassword} 
+            onChange = {(event)=> passwordRef.current = event.target.value} 
+            style={{marginBottom: '16px'}}></input>
+            <button type = "submit">Log In</button>
+          </form>
+          </Grid2>
+          </Grid2>
+        </div>
+      )
+    }
   return (
     <>
     <Router>
@@ -221,6 +363,7 @@ export default function App()
         <Route path = "/fillValues" element = {<FillTaskValues />}></Route>
         <Route path = "/myTasks" element = {<ViewMyTasks />}></Route>
         <Route path = "/" element = {<SignUpPage/>}></Route>
+        <Route path = "/login" element = {<LoginPage/>}></Route>
       </Routes>
     </Router>
     </>

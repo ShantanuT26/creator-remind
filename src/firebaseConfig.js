@@ -19,7 +19,7 @@ const db = getFirestore();
 
 const auth = getAuth();
 
-const colRef = collection(db, "Books");
+const userColRef = collection(db, "users");
 
 // getDocs(colRef).then(
 //   (snapshot)=>{
@@ -32,4 +32,4 @@ const colRef = collection(db, "Books");
 //   }
 // )
 
-export {db, colRef, auth};
+export {db, userColRef, auth};
