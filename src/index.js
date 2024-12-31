@@ -5,21 +5,27 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import TaskContext from './TaskContext';
 import ThemeContext from './ThemeContext';
+import AuthContext from './AuthContext';
 import {initializeApp} from 'firebase/app';
 import {collection, getDocs, getFirestore} from 'firebase/firestore';
+import { BrowserRouter as Router } from 'react-router-dom';
 
 
 
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
+  
   <React.StrictMode>
+    <AuthContext>
     <ThemeContext>
     <TaskContext>
       <App />
     </TaskContext>
     </ThemeContext>
+    </AuthContext>
   </React.StrictMode>
+  
 );
 
 // initializeApp(firebaseConfig);

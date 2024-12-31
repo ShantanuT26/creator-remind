@@ -13,6 +13,8 @@ import {db, userColRef, auth} from './firebaseConfig';
 import { addDoc, query, getDocs, setDoc, doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged} from 'firebase/auth';
 import validator from "validator";
+import SignOutButton from './SignOutButton';
+import AuthContext from './AuthContext';
 
 export const ThemeContext = React.createContext();
 
@@ -55,6 +57,7 @@ export default function App()
             <Button onClick = {goToMyTasks}>My Tasks</Button>
             {/* <Button onClick = {toggleTheme}>Toggle Theme</Button> */}
             <ThemeButton />
+            <SignOutButton/>
           </Grid2>
       </ThemeProvider>
     )
@@ -189,6 +192,14 @@ export default function App()
             console.log("user doc exists");
             //setTaskBubbles(docSnap.tasks);
             tempData = docSnap.data();
+            if(tempData.tasks.length==0 )
+            {
+              console.log("No data");
+            }
+            else
+            {
+              console.log("Task Data Logs: " + tempData);
+            }
             setTaskBubbles(tempData.tasks || []);
           }
           else{
@@ -311,7 +322,7 @@ export default function App()
         signInWithEmailAndPassword(auth, emailRef.current, passwordRef.current).then(()=> 
         {
           const userDocRef = doc(db, "users", auth.currentUser.uid);
-          setDoc(userDocRef, { name: "John Doe", email: auth.currentUser.email});
+          //setDoc(userDocRef, { name: "John Doe", email: auth.currentUser.email});
           navigate('/home')
         }
         ).catch(
@@ -357,7 +368,7 @@ export default function App()
     }
   return (
     <>
-    <Router>
+      <Router>
       <Routes>
         <Route path = "/home" element = {<HomePage />}></Route>
         <Route path = "/fillValues" element = {<FillTaskValues />}></Route>
@@ -365,7 +376,8 @@ export default function App()
         <Route path = "/" element = {<SignUpPage/>}></Route>
         <Route path = "/login" element = {<LoginPage/>}></Route>
       </Routes>
-    </Router>
+      </Router>
+
     </>
   );
 }
